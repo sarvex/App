@@ -47,6 +47,8 @@ const propTypes = {
     /** Information about the network */
     network: networkPropTypes.isRequired,
 
+    onLayout: PropTypes.func.isRequired,
+
     ...windowDimensionsPropTypes,
     ...withDrawerPropTypes,
     ...withLocalizePropTypes,
@@ -329,7 +331,8 @@ class ReportActionsView extends React.Component {
     /**
      * Runs when the FlatList finishes laying out
      */
-    recordTimeToMeasureItemLayout() {
+    recordTimeToMeasureItemLayout(event) {
+        this.props.onLayout(event);
         if (this.didLayout) {
             return;
         }

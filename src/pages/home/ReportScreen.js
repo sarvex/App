@@ -114,6 +114,7 @@ class ReportScreen extends React.Component {
         this.removeViewportResizeListener = () => {};
 
         this.state = {
+            placeholderSkeletonViewContainerHeight: 0,
             skeletonViewContainerHeight: reportActionsListViewHeight,
             viewportOffsetTop: 0,
             isBannerVisible: true,
@@ -227,6 +228,16 @@ class ReportScreen extends React.Component {
         // (which is shown, until all the actual views of the ReportScreen have been rendered)
         const animatePlaceholder = !freeze;
 
+        if (reportID == 4263078253199086) {
+            console.log("this.isReportReadyForDisplay(): " + this.isReportReadyForDisplay());
+            console.log("isLoadingInitialReportActions: " + isLoadingInitialReportActions);
+            console.log("this.props.reportActions: " + _.size(this.props.reportActions));
+            console.log("this.props.report.isLoadingReportActions: " + this.props.report.isLoadingReportActions);
+            console.log("this.state.skeletonViewContainerHeight: " + this.state.skeletonViewContainerHeight);
+            console.log("this.state.placeholderSkeletonViewContainerHeight: " + this.state.placeholderSkeletonViewContainerHeight);
+            console.log("========================================");
+        }
+
         return (
             <ScreenWrapper
                 style={screenWrapperStyle}
@@ -289,6 +300,11 @@ class ReportScreen extends React.Component {
                         >
                             {(this.isReportReadyForDisplay() && !isLoadingInitialReportActions) && (
                                 <>
+                                    {this.props.report.isLoadingReportActions && this.state.placeholderSkeletonViewContainerHeight > 0 && (
+                                        <ReportActionsSkeletonView
+                                            containerHeight={this.state.placeholderSkeletonViewContainerHeight}
+                                        />
+                                    )}
                                     <ReportActionsView
                                         reportActions={this.props.reportActions}
                                         report={this.props.report}
@@ -296,6 +312,16 @@ class ReportScreen extends React.Component {
                                         isComposerFullSize={this.props.isComposerFullSize}
                                         isDrawerOpen={this.props.isDrawerOpen}
                                         parentViewHeight={this.state.skeletonViewContainerHeight}
+                                        onLayout={(event) => {
+                                            const placeholderSkeletonViewContainerHeight = event.nativeEvent.layout.height;
+
+                                            // The height can be 0 if the component unmounts - we are not interested in this value and want to know how much space it
+                                            // takes up so we can set the skeleton view container height.
+                                            if (placeholderSkeletonViewContainerHeight === 0) {
+                                                return;
+                                            }
+                                            this.setState({placeholderSkeletonViewContainerHeight});
+                                        }}
                                     />
                                     <ReportFooter
                                         errors={addWorkspaceRoomOrChatErrors}
@@ -311,7 +337,7 @@ class ReportScreen extends React.Component {
 
                             {/* Note: The report should be allowed to mount even if the initial report actions are not loaded. If we prevent rendering the report while they are loading then
                             we'll unnecessarily unmount the ReportActionsView which will clear the new marker lines initial state. */}
-                            {(!this.isReportReadyForDisplay() || isLoadingInitialReportActions) && (
+                            {(!this.isReportReadyForDisplay() || (_.isEmpty(this.props.reportActions) && this.props.report.isLoadingReportActions)) && (
                                 <ReportActionsSkeletonView
                                     containerHeight={this.state.skeletonViewContainerHeight}
                                 />
