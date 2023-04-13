@@ -3,11 +3,24 @@
  *
  * node ./scripts/AggregateGitHubDataFromUpwork.js <path_to_csv> <github_pat>
  */
+
+/* eslint-disable no-console, @lwc/lwc/no-async-await, no-restricted-syntax, no-await-in-loop */
 const _ = require('underscore');
 const fs = require('fs');
-const {GitHub, getOctokitOptions} = require("@actions/github/lib/utils");
-const {throttling} = require("@octokit/plugin-throttling");
-const {paginateRest} = require("@octokit/plugin-paginate-rest");
+const {GitHub, getOctokitOptions} = require('@actions/github/lib/utils');
+const {throttling} = require('@octokit/plugin-throttling');
+const {paginateRest} = require('@octokit/plugin-paginate-rest');
+const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+
+const csvWriter = createCsvWriter({
+    path: 'output.csv',
+    header: [
+        {id: 'number', title: 'number'},
+        {id: 'title', title: 'title'},
+        {id: 'labels', title: 'labels'},
+        {id: 'type', title: 'type'},
+    ],
+});
 
 if (process.argv.length < 3) {
     throw new Error('Error: must provide filepath for CSV data');
@@ -25,7 +38,6 @@ let issues = _.filter(fs.readFileSync(filepath).toString().split('\n'), issue =>
 
 // Skip header row
 issues = issues.slice(1);
-
 
 // Get GitHub token
 const token = process.argv[3].trim();
@@ -52,45 +64,40 @@ const octokit = new Octokit(getOctokitOptions(token, {
     },
 })).rest;
 
-
+function getType(labels) {
+    if (_.contains(labels, 'Bug')) {
+        return 'bug';
+    }
+    if (_.contains(labels, 'NewFeature')) {
+        return 'feature';
+    }
+    return 'other';
+}
 
 async function getGitHubData() {
     const gitHubData = [];
     for (const issueNumber of issues) {
         const num = issueNumber.trim();
+        console.info(`Fetching ${num}`);
         const result = await octokit.issues.get({
             owner: 'Expensify',
             repo: 'App',
             issue_number: num,
+        }).catch(() => {
+            console.warn(`Error getting issue ${num}`);
         });
-        const issue = result.data;
-        gitHubData.push({
-            number: issue.number,
-            title: issue.title,
-            labels: _.map(issue.labels, label => label.name),
-        });
+        if (result) {
+            const issue = result.data;
+            const labels = _.map(issue.labels, label => label.name);
+            gitHubData.push({
+                number: issue.number,
+                title: issue.title,
+                labels,
+                type: getType(labels),
+            });
+        }
     }
     return gitHubData;
 }
 
-const bugs = [];
-const newFeatures = [];
-const other = [];
-
-getGitHubData().then((issues) => {
-    _.each(issues, issue => {
-        if (_.contains(issue.labels, 'Bug')) {
-            bugs.push(issue);
-            return;
-        }
-        if (_.contains(issue.labels, 'New Feature')) {
-            newFeatures.push(issue);
-            return;
-        }
-        other.push(issue);
-    });
-});
-
-console.log('Bugs:', bugs);
-console.log('New Features:', newFeatures);
-console.log('Other:', other);
+getGitHubData().then(gitHubData => csvWriter.writeRecords(gitHubData)).then(() => console.info('Done ✅ Wrote file to output.csv'));
