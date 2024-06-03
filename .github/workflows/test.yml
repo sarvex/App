@@ -24,7 +24,7 @@ jobs:
 
       - name: Get number of CPU cores
         id: cpu-cores
-        uses: SimenB/github-actions-cpu-cores@31e91de0f8654375a21e8e83078be625380e2b18
+        uses: SimenB/github-actions-cpu-cores@73596866139c8abf614e2e7dea5704d7dd96c8ca
 
       - name: Cache Jest cache
         id: cache-jest-cache
